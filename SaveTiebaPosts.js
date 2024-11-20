@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         导出百度贴吧楼主帖子
 // @namespace    http://tampermonkey.net/
-// @version      1.0.1
+// @version      1.1.1
 // @description  将百度贴吧某帖子中楼主的所有发言保存为 HTML 文件，方便离线浏览
 // @author       wiiiind
 // @match        https://tieba.baidu.com/p/*
@@ -197,9 +197,9 @@
                     body { 
                         margin: 20px; 
                         font-family: Arial, sans-serif;
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
+                        max-width: 794px;  /* A4 width */
+                        margin-left: auto;
+                        margin-right: auto;
                     }
                     .header {
                         position: sticky;
@@ -251,7 +251,7 @@
                     }
                     table { 
                         border-collapse: collapse; 
-                        width: 808px; 
+                        width: 100%;  /* Use full width of body */
                         margin-bottom: 20px;
                         position: relative; 
                     }
@@ -263,15 +263,11 @@
                         vertical-align: top; 
                     }
                     .info-cell { 
-                        width: 200px; 
+                        width: 22%; 
                         border-right: 1px solid #ddd;
-                        position: sticky; 
-                        top: 80px;
-                        align-self: flex-start;
-                        background: white; 
                     }
                     .content-cell { 
-                        width: 608px;
+                        width: 78%;
                         flex: 1; 
                     }
                     .floor-number { 
@@ -373,13 +369,49 @@
             `;
         });
 
+        // 获取当前登录用户信息
+        const userElement = document.querySelector('.u_menu_username a');
+        const userName = userElement ? userElement.querySelector('.u_username_title').textContent : '未登录用户';
+        const userLink = userElement ? userElement.href : '#';
+
         htmlContent += `
             <div class="footer">
-                帖子由<a href="https://greasyfork.org/zh-CN/scripts/518200-tieba-op-posts-saver" target="_blank">此脚本</a>自动抓取生成。
+                帖子由<a href="${userLink}" target="_blank">@${userName}</a>通过<a href="https://greasyfork.org/zh-CN/scripts/518200-tieba-op-posts-saver" target="_blank">此脚本</a>自动抓取生成。
+                欲查看于移动设备，请<a href="javascript:void(0)" onclick="printToPDF()">另存为PDF</a>。
             </div>
+            <script>
+                function printToPDF() {
+                    if (confirm('请选择"另存为PDF"打印机进行打印')) {
+                        window.print();
+                    }
+                }
+            </script>
         </body>
         </html>
         `;
+
+        // 添加打印样式
+        const printStyles = `
+            @media print {
+                .jump-btn {
+                    display: none;  /* 隐藏跳转按钮 */
+                }
+                
+                /* 确保内容完整打印 */
+                .content-cell img {
+                    break-inside: avoid;
+                }
+                
+                /* 优化打印布局 */
+                table {
+                    break-inside: avoid;
+                    page-break-inside: avoid;
+                }
+            }
+        `;
+
+        // 将打印样式插入到现有样式中
+        htmlContent = htmlContent.replace('</style>', printStyles + '</style>');
 
         const blob = new Blob([htmlContent], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
